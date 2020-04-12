@@ -39,19 +39,19 @@
 
 // Declare Variables used in this class
 // They aren't private because the ISR needs to access them
-ClearPathMotorSD* _motors[6];					//6 clearpath motor pointers for up to 6 digital pins in PORTA
+ClearPathMotorSD* _motors[6];					//6 clearpath motor pointers for up to 6 digital pins in PORTL
 uint8_t _numAxis=0;							//this keeps track of how many pointers are active
 uint8_t _BurstSteps[6]={0, 0, 0, 0, 0, 0};	//this is the container for the motors to dump however many steps need to be pulsed
 uint8_t _pins[6]={0, 0, 0, 0, 0, 0};		//This holds the port address (Binary) for each motors Step Pin
 uint8_t _SUMPINS=0;							//This holds the Binary Sum of all active motor Step Pin addresses
-uint8_t _OutputBits;						//this is the container to write to output PORTA
+uint8_t _OutputBits;						//this is the container to write to output PORTL
 boolean _flag=false;						//This is the flag to show when to finish pulsing the motors
 
 
 
 
 //This is the Interupt Service Routine.
-// It asks each motor how many steps to send, and then pulses to PORTA
+// It asks each motor how many steps to send, and then pulses to PORTL
 ISR(TIMER2_COMPA_vect)
 {  
 	//Prevent Interupts
@@ -74,7 +74,7 @@ ISR(TIMER2_COMPA_vect)
 
 		_flag=false;
 
-		_OutputBits = PORTA;	//Read the port
+		_OutputBits = PORTL;	//Read the port
 
 		if(_BurstSteps[0] && _BurstSteps[0]--)	//Assume at least one axis is active, and check/decrement BurstSteps
 		{
@@ -106,10 +106,13 @@ ISR(TIMER2_COMPA_vect)
 			_flag=true; 
 			_OutputBits |= _pins[5];	//Activate the B input for motor 6
 		}
-		PORTA = _OutputBits;			//Write to the ports
+		
+		DDRL |= 1 << PL2;
+		PORTL = _OutputBits;			//Write to the ports
 		delayMicroseconds(2);			//Short Delay
 		_OutputBits &=63-_SUMPINS ;	//Turn off all active pins
-		PORTA = _OutputBits;			//Write to the ports
+		PORTL = _OutputBits;			//Write to the ports
+		
 
 	} while(_flag);
 
@@ -133,8 +136,8 @@ ClearPathStepGen::ClearPathStepGen(ClearPathMotorSD* motor1)
 	_flag=false;
 	_numAxis=1;
 	_motors[0]=motor1;
-	if(_motors[0]->PinB-22 >= 0)
-		_pins[0]=(1<<(_motors[0]->PinB-22));
+	// if(_motors[0]->PinB-22 >= 0)
+	_pins[0]=1 << PL2; //hard-coded to PL2 (pin 37 on AVR)
 	_SUMPINS=_pins[0];
 }
 
@@ -287,8 +290,8 @@ void ClearPathStepGen::Start()
 	_SUMPINS=0;
 	for( int i=0; i<_numAxis; i++)
 	{
-		if(_motors[i]->PinB-22 >= 0)
-			_pins[i]=(1<<(_motors[i]->PinB-22));
+		// if(_motors[i]->PinB-22 >= 0)
+		_pins[i]=1 << PL2;
 		_SUMPINS+=_pins[i];
 	}
 	
